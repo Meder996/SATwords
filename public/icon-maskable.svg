@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="SAT VocaMaster maskable app icon">
+  <title>SAT VocaMaster</title>
+  <!-- Full-bleed background: Android/Chrome crop maskable icons to a circle or squircle. -->
+  <rect width="1024" height="1024" fill="#101a29"/>
+  <!-- Artwork is scaled into the safe zone (centre 80%) so nothing important is cropped. -->
+  <g transform="translate(512 482) scale(0.9) translate(-512 -512)">
+    <path d="M244 470V806L512 908 780 806V470" fill="none" stroke="#f3aa67" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M306 318c90 18 154 70 192 138v296c-40-46-104-62-192-74z" fill="#f3aa67"/>
+    <path d="M718 318c-90 18-154 70-192 138v296c40-46 104-62 192-74z" fill="#f3aa67"/>
+    <path d="M512 162c8 52 34 78 86 86-52 8-78 34-86 86-8-52-34-78-86-86 52-8 78-34 86-86z" fill="#f3aa67"/>
+  </g>
+</svg>
