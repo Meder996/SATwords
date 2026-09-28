@@ -21,7 +21,7 @@ Signing in merges locally saved progress with the account's cloud records. An an
 
 ## Optional Gemini features
 
-Set `GEMINI_API_KEY` in `.env` **without** a `VITE_` prefix. The Express proxy keeps it off the browser and powers:
+Set `GEMINI_API_KEY` in `.env` **without** a `VITE_` prefix. The Express proxy keeps it off the browser and sends it to Google in an `x-goog-api-key` header (including support for the newer authorization-key format). It powers:
 
 - Mnemonics, SAT context tips, and usage explanations via `gemini-3-flash-preview`.
 - Short personalized reading passages and two multiple-choice questions via the same model.
@@ -39,7 +39,7 @@ AI model access, pricing and availability depend on your Google API project. AI 
 ## Deploy on Vercel
 
 1. Import this GitHub repository into Vercel. Choose **Vite** as the framework preset. The committed `vercel.json` runs `npm run build` and serves `dist`. The three files in `api/` deploy the Gemini proxy as Vercel Functions; the browser calls them via relative `/api/...` URLs. No separate server or localhost URL is needed in production.
-2. The app works immediately in local guest mode with no environment variables. For optional AI, set `GEMINI_API_KEY` in Vercel **Environment Variables** (server-side only). For optional Firebase, set `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, and `VITE_FIREBASE_ARTIFACT_ID`. `VITE_` values are embedded into the build, so redeploy after adding or changing them. **Do not** put `GEMINI_API_KEY` in a `VITE_` variable.
+2. The app works immediately in local guest mode with no environment variables. For optional AI, set `GEMINI_API_KEY` in your Vercel project **Settings → Environment Variables** (server-side only), choose the environments where it should work (Production and/or Preview), then redeploy. A local `.env` is ignored by Git and does not get uploaded to Vercel. For optional Firebase, set `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, and `VITE_FIREBASE_ARTIFACT_ID`. `VITE_` values are embedded into the build, so redeploy after adding or changing them. **Do not** put `GEMINI_API_KEY` in a `VITE_` variable.
 3. If using Firebase Auth, add your Vercel production domain (and any preview domains you plan to use) to Firebase Authentication's authorized domains. Deploy `firestore.rules` and optionally run the dictionary seeder as described above.
 4. Deploy from the `arena/01a0e73e-satwords` branch to preview these changes now, or merge its pull request into `main` to deploy from `main`.
 

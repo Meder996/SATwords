@@ -14,7 +14,7 @@ setInterval(()=>{const now=Date.now();for(const [ip,record] of requests)if(now-r
 async function gemini(model,payload) {
   if (!key) { const error=new Error('AI features need a server-side Gemini API key. Add GEMINI_API_KEY to .env to enable them.'); error.status=503; throw error; }
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),20000);
-  try { const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:controller.signal});const json=await response.json();if(!response.ok)throw new Error(json.error?.message || 'Gemini is unavailable.');return json; }
+  try { const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(payload),signal:controller.signal});const json=await response.json();if(!response.ok)throw new Error(json.error?.message || 'Gemini is unavailable.');return json; }
   finally { clearTimeout(timer); }
 }
 function parseText(json) { const text=json.candidates?.[0]?.content?.parts?.find(p=>p.text)?.text; if(!text)throw new Error('Gemini returned an empty response.');return JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g,'')); }

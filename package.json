@@ -7,7 +7,7 @@
     "dev": "concurrently -k \"node server.js\" \"vite --host 0.0.0.0\"",
     "build": "vite build",
     "preview": "node server.js",
-    "test": "node --test src/lib/*.test.js",
+    "test": "node --test src/lib/*.test.js tests/*.test.js",
     "seed:firestore": "node scripts/seed-firestore.mjs"
   },
   "dependencies": {
