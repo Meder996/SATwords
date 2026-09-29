@@ -1,7 +1,7 @@
 // SAT VocaMaster service worker: offline app shell + icon/vendor precache.
-// Everything the app is served from this origin; cross-origin requests (Firebase,
+// Everything the app is served from this origin; cross-origin requests (Supabase,
 // Puter, fonts) are never intercepted.
-const CACHE = 'vocamaster-v2';
+const CACHE = 'vocamaster-v3';
 const SHELL = [
   '/',
   '/index.html',
