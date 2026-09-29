@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pinned-tile artwork for Windows/Edge. Referenced from index.html via msapplication-config. -->
+<browserconfig>
+  <msapplication>
+    <tile>
+      <square70x70logo src="/icons/icon-96.png"/>
+      <square150x150logo src="/icons/icon-144.png"/>
+      <wide310x150logo src="/icons/icon-256.png"/>
+      <square310x310logo src="/icons/icon-384.png"/>
+      <TileColor>#101a29</TileColor>
+    </tile>
+  </msapplication>
+</browserconfig>
