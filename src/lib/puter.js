@@ -105,17 +105,19 @@ export function onAuthChange(listener) {
   return () => { cancelled = true; off(); };
 }
 
-function friendly(error) {
+// Maps provider/SDK failures onto the small set of codes the UI reacts to.
+// Exported so the streaming tutor client (src/lib/tutor.js) reports failures the same way.
+export function friendlyAIError(error) {
   if (error instanceof AIError) return error;
   const status = error?.status ?? error?.response?.status ?? error?.error?.status;
   const raw = String(error?.message || error?.error?.message || error?.error || error || '');
-  if (status === 401 || /unauthori[sz]ed|not signed in|no auth token/i.test(raw)) {
+  if (status === 401 || status === 403 || /unauthori[sz]ed|not signed in|no auth token/i.test(raw)) {
     return new AIError('Connect a Puter account to use the AI features.', 'signed-out', error);
   }
   if (/usage|limit|quota|credit|payment|upgrade/i.test(raw)) {
     return new AIError('Your Puter account has reached its AI usage limit for now.', 'limited', error);
   }
-  if (/network|failed to fetch|load failed|offline|timeout|aborted/i.test(raw)) {
+  if (/network|failed to fetch|fetch failed|load failed|offline|timeout|aborted/i.test(raw)) {
     return new AIError("Couldn't reach Puter. Check your connection and try again.", 'offline', error);
   }
   return new AIError('AI is unavailable right now. Please try again in a moment.', 'unavailable', error);
@@ -154,14 +156,14 @@ async function ask(prompt) {
   try {
     puter = await sdk();
   } catch (error) {
-    throw friendly(error);
+    throw friendlyAIError(error);
   }
   try {
     const options = { temperature: 0.4 };
     if (MODEL) options.model = MODEL;
     return textOf(await puter.ai.chat(prompt, options));
   } catch (error) {
-    throw friendly(error);
+    throw friendlyAIError(error);
   }
 }
 
@@ -184,7 +186,40 @@ export async function getInsight(word) {
   return insight;
 }
 
+// How many reading passages one AI practice set contains.
+export const PASSAGE_SET_SIZE = 3;
+
+// One multiple-choice question, normalised and validated.
+function normalizeQuestion(question) {
+  return {
+    question: unescape(question?.question),
+    options: (Array.isArray(question?.options) ? question.options : []).map(option => unescape(option)),
+    correctIndex: Number(question?.correctIndex ?? question?.correct_index ?? 0),
+    explanation: unescape(question?.explanation)
+  };
+}
+
+// One passage from an AI reply. `fallbackTitle` keeps a set self-labelling when the model omits titles.
+function normalizePassage(entry, fallbackTitle = '') {
+  const passage = unescape(entry?.passage || entry?.text);
+  const questions = (Array.isArray(entry?.questions) ? entry.questions : [])
+    .map(normalizeQuestion)
+    .filter(question => question.question && question.options.length >= 2)
+    .slice(0, 3);
+  return { title: unescape(entry?.title) || fallbackTitle, passage, questions };
+}
+
+// Accepts either the set shape { passages: [...] } or the single shape { passage, questions }.
+export function normalizePassageSet(data, count = PASSAGE_SET_SIZE) {
+  const raw = Array.isArray(data?.passages) ? data.passages : data?.passage ? [data] : [];
+  return raw
+    .map((entry, index) => normalizePassage(entry, `Passage ${index + 1}`))
+    .filter(entry => entry.passage)
+    .slice(0, count);
+}
+
 // Returns { passage, questions: [{ question, options[], correctIndex, explanation }] } using the given words.
+// Kept for single-passage callers; the practice page uses getPassageSet below.
 export async function getPassage(words) {
   const focus = words.map(word => ({ word: word.term, definition: word.definition }));
   const prompt = 'You are a Digital SAT reading tutor. '
@@ -193,18 +228,26 @@ export async function getPassage(words) {
     + 'short answer choices, a zero-based correctIndex, and a short explanation. Avoid copyrighted passage text. '
     + 'Reply with JSON only, shaped exactly like {"passage":"...","questions":[{"question":"...","options":["..."],"correctIndex":0,"explanation":"..."}]}.';
   const data = parseJson(await ask(prompt));
-  const passage = unescape(data.passage || data.text);
-  const questions = (Array.isArray(data.questions) ? data.questions : [])
-    .map(question => ({
-      question: unescape(question?.question),
-      options: (Array.isArray(question?.options) ? question.options : []).map(option => unescape(option)),
-      correctIndex: Number(question?.correctIndex ?? question?.correct_index ?? 0),
-      explanation: unescape(question?.explanation)
-    }))
-    .filter(question => question.question && question.options.length >= 2)
-    .slice(0, 3);
+  const [passage] = normalizePassageSet(data, 1);
   if (!passage) throw new AIError('The AI reply could not be read. Please try again.', 'bad-response');
-  return { passage, questions };
+  return { passage: passage.passage, questions: passage.questions };
+}
+
+// Returns { passages: [{ title, passage, questions[] }] } — a set of three passages in one request,
+// so a full practice set costs the learner a single AI call. Tolerates models that answer with the
+// single-passage shape by treating that as a one-passage set.
+export async function getPassageSet(words, count = PASSAGE_SET_SIZE) {
+  const focus = words.map(word => ({ word: word.term, definition: word.definition }));
+  const prompt = 'You are a Digital SAT reading tutor. '
+    + `Write ${count} different original academic passages of 100-150 words each, and use these words naturally `
+    + `across the set: ${JSON.stringify(focus)}. Every passage needs its own short title, its own angle, and `
+    + 'exactly two multiple-choice questions testing word meaning in that passage, each with four short answer '
+    + 'choices, a zero-based correctIndex, and a short explanation. Avoid copyrighted passage text. '
+    + 'Reply with JSON only, shaped exactly like {"passages":[{"title":"...","passage":"...","questions":[{"question":"...","options":["..."],"correctIndex":0,"explanation":"..."}]}]}.';
+  const data = parseJson(await ask(prompt));
+  const passages = normalizePassageSet(data, count);
+  if (!passages.length) throw new AIError('The AI reply could not be read. Please try again.', 'bad-response');
+  return { passages };
 }
 
 function speakLocally(text) {

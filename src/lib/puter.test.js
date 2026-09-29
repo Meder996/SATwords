@@ -128,3 +128,57 @@ test('playPronunciation falls back to the browser speech engine', async () => {
     assert.equal(spoken, 'cogent');
   } finally { restore(); }
 });
+
+test('getPassageSet normalises a set of three passages with their questions', async () => {
+  const client = await import('./puter.js');
+  const reply = JSON.stringify({
+    passages: [1, 2, 3].map(n => ({
+      title: `Passage ${n}`,
+      passage: `Original passage number ${n}.`,
+      questions: [
+        { question: `Q${n}`, options: ['a', 'b', 'c', 'd'], correctIndex: n, explanation: 'because' },
+        { question: '', options: ['x', 'y'], correctIndex: 0 }
+      ]
+    }))
+  });
+  const restore = withFakeBrowser(connectedPuter(async prompt => {
+    assert.match(prompt, /Write 3 different original academic passages/);
+    return { message: { content: reply } };
+  }));
+  try {
+    const set = await client.getPassageSet([{ term: 'abate', definition: 'to lessen' }]);
+    assert.equal(set.passages.length, 3);
+    assert.deepEqual(set.passages.map(entry => entry.title), ['Passage 1', 'Passage 2', 'Passage 3']);
+    assert.deepEqual(set.passages[1].questions, [{ question: 'Q2', options: ['a', 'b', 'c', 'd'], correctIndex: 2, explanation: 'because' }]);
+  } finally { restore(); }
+});
+
+test('getPassageSet accepts a single-passage reply and labels it', async () => {
+  const client = await import('./puter.js');
+  const reply = JSON.stringify({ passage: 'Only one passage came back.', questions: [{ question: 'Q1', options: ['a', 'b'], correctIndex: 0 }] });
+  const restore = withFakeBrowser(connectedPuter(async () => reply));
+  try {
+    const set = await client.getPassageSet([{ term: 'cogent', definition: 'clear' }]);
+    assert.equal(set.passages.length, 1);
+    assert.equal(set.passages[0].title, 'Passage 1');
+    assert.equal(set.passages[0].passage, 'Only one passage came back.');
+  } finally { restore(); }
+});
+
+test('getPassageSet rejects a reply with no usable passage', async () => {
+  const client = await import('./puter.js');
+  const restore = withFakeBrowser(connectedPuter(async () => '{"passages":[{"passage":"   ","questions":[]}]}'));
+  try {
+    await assert.rejects(client.getPassageSet([{ term: 'abate', definition: 'to lessen' }]), error => error.code === 'bad-response');
+  } finally { restore(); }
+});
+
+test('friendlyAIError classifies auth, quota and network failures', async () => {
+  const client = await import('./puter.js');
+  assert.equal(client.friendlyAIError({ status: 403 }).code, 'signed-out');
+  assert.equal(client.friendlyAIError(new Error('quota exceeded')).code, 'limited');
+  assert.equal(client.friendlyAIError(new Error('network error')).code, 'offline');
+  assert.equal(client.friendlyAIError(new Error('mystery')).code, 'unavailable');
+  const already = new client.AIError('nope', 'signed-out');
+  assert.equal(client.friendlyAIError(already), already);
+});
